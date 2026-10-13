@@ -1,0 +1,10 @@
+
+#!/usr/bin/env sh
+
+echo "Building frontend..."
+npm --prefix frontend run build || exit 1
+
+echo "Building backend..."
+npm --prefix backend run build || exit 1
+
+echo "Both builds passed. Proceeding with push."
