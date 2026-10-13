@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  DROPPED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+model User {
+  id              Int          @id @default(autoincrement())
+  name            String
+  email           String       @unique
+  password        String
+  role            Role         @default(STUDENT)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  enrollments     Enrollment[]
+  teachingCourses Course[]
+  attendances     Attendance[]
+  submissions     Submission[]
+}
+
+model Course {
+  id          Int    @id @default(autoincrement())
+  title       String
+  code        String @unique
+  description String
+  credits     Int
+  teacherId   Int
+  teacher     User   @relation(fields: [teacherId], references: [id])
+
+  enrollments Enrollment[]
+  attendances Attendance[]
+  assignments Assignment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Enrollment {
+  id         Int              @id @default(autoincrement())
+  studentId  Int
+  student    User             @relation(fields: [studentId], references: [id])
+  courseId   Int
+  course     Course           @relation(fields: [courseId], references: [id])
+  enrolledAt DateTime         @default(now())
+  status     EnrollmentStatus @default(ACTIVE)
+
+  @@unique([studentId, courseId])
+}
+
+model Attendance {
+  id        Int              @id @default(autoincrement())
+  studentId Int
+  student   User             @relation(fields: [studentId], references: [id])
+  courseId  Int
+  course    Course           @relation(fields: [courseId], references: [id])
+  date      DateTime
+  status    AttendanceStatus @default(PRESENT)
+  createdAt DateTime         @default(now())
+
+  @@unique([studentId, courseId, date])
+}
+
+model Assignment {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String
+  dueDate     DateTime
+  totalMarks  Int
+  courseId    Int
+  course      Course       @relation(fields: [courseId], references: [id])
+  submissions Submission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Submission {
+  id           Int        @id @default(autoincrement())
+  studentId    Int
+  student      User       @relation(fields: [studentId], references: [id])
+  assignmentId Int
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  content      String?
+  fileUrl      String?
+  marks        Int?
+  submittedAt  DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([studentId, assignmentId])
+}
