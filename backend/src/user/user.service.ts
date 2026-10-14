@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-
+import * as bcrypt from 'bcrypt';
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
@@ -13,11 +13,37 @@ export class UserService {
       },
     });
   }
+  async findUserById(id: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+
+    return user;
+  }
   async findUserByEmail(email: string) {
     const user = await this.prisma.user.findUnique({
       where: { email },
     });
-
     return user;
+  }
+  async login(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+    return user;
+  }
+  async getMe(userId: number) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const { password: _, ...safeUser } = user;
+    return safeUser;
   }
 }

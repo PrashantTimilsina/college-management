@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UserService } from '../user/user.service.js';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -35,5 +39,27 @@ export class AuthService {
     const { password: _, ...safeUser } = user;
     const tokens = await this.generateToken(user.id, user.role);
     return { user: safeUser, tokens };
+  }
+  async login(email: string, password: string) {
+    const user = await this.userService.login(email, password);
+    const { password: _, ...safeUser } = user;
+    const tokens = await this.generateToken(user.id, user.role);
+    return { user: safeUser, tokens };
+  }
+  async refreshAccessToken(refreshToken: string) {
+    let payload: { userId: number; role: string };
+    try {
+      payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    const user = await this.userService.findUserById(payload.userId);
+    if (!user) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    const tokens = await this.generateToken(user.id, user.role);
+    return tokens;
   }
 }
