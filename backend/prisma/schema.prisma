@@ -42,6 +42,7 @@ model User {
   teachingCourses Course[]
   attendances     Attendance[]
   submissions     Submission[]
+  hashedRefreshToken String?
 }
 
 model Course {

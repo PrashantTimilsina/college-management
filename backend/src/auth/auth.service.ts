@@ -38,12 +38,16 @@ export class AuthService {
     const user = await this.userService.createUser(name, email, hashedPassword);
     const { password: _, ...safeUser } = user;
     const tokens = await this.generateToken(user.id, user.role);
+    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+    await this.userService.saveHashedRefreshToken(user.id, hashedRefreshToken);
     return { user: safeUser, tokens };
   }
   async login(email: string, password: string) {
     const user = await this.userService.login(email, password);
     const { password: _, ...safeUser } = user;
     const tokens = await this.generateToken(user.id, user.role);
+    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+    await this.userService.saveHashedRefreshToken(user.id, hashedRefreshToken);
     return { user: safeUser, tokens };
   }
   async refreshAccessToken(refreshToken: string) {
@@ -56,10 +60,22 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
     const user = await this.userService.findUserById(payload.userId);
-    if (!user) {
+
+    if (!user || !user.hashedRefreshToken) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    const isRefreshTokenValid = await bcrypt.compare(
+      refreshToken,
+      user.hashedRefreshToken,
+    );
+
+    if (!isRefreshTokenValid) {
       throw new UnauthorizedException('Invalid refresh token');
     }
     const tokens = await this.generateToken(user.id, user.role);
+    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+    console.log(user.hashedRefreshToken === hashedRefreshToken);
+    await this.userService.saveHashedRefreshToken(user.id, hashedRefreshToken);
     return tokens;
   }
 }

@@ -46,4 +46,10 @@ export class UserService {
     const { password: _, ...safeUser } = user;
     return safeUser;
   }
+  async saveHashedRefreshToken(userId: number, hashedRefreshToken: string) {
+    return await this.prisma.user.update({
+      where: { id: userId },
+      data: { hashedRefreshToken },
+    });
+  }
 }
