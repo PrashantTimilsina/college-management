@@ -48,7 +48,7 @@ export class AuthService {
   }
   async login(email: string, password: string) {
     const user = await this.userService.login(email, password);
-    const { password: _, ...safeUser } = user;
+    const { password: _, hashedRefreshToken: _second, ...safeUser } = user;
     const tokens = await this.generateToken(user.id, user.role);
     const hashedRefreshToken = this.hashToken(tokens.refreshToken);
     await this.userService.saveHashedRefreshToken(user.id, hashedRefreshToken);
