@@ -8,6 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { StringValue } from 'ms';
+import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 @Injectable()
 export class AuthService {
   constructor(
@@ -15,6 +16,9 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
   async generateToken(userId: number, role: string) {
     const payload = { userId, role };
     const [accessToken, refreshToken] = await Promise.all([
@@ -38,7 +42,7 @@ export class AuthService {
     const user = await this.userService.createUser(name, email, hashedPassword);
     const { password: _, ...safeUser } = user;
     const tokens = await this.generateToken(user.id, user.role);
-    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+    const hashedRefreshToken = this.hashToken(tokens.refreshToken);
     await this.userService.saveHashedRefreshToken(user.id, hashedRefreshToken);
     return { user: safeUser, tokens };
   }
@@ -46,7 +50,7 @@ export class AuthService {
     const user = await this.userService.login(email, password);
     const { password: _, ...safeUser } = user;
     const tokens = await this.generateToken(user.id, user.role);
-    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+    const hashedRefreshToken = this.hashToken(tokens.refreshToken);
     await this.userService.saveHashedRefreshToken(user.id, hashedRefreshToken);
     return { user: safeUser, tokens };
   }
@@ -64,17 +68,14 @@ export class AuthService {
     if (!user || !user.hashedRefreshToken) {
       throw new UnauthorizedException('Invalid refresh token');
     }
-    const isRefreshTokenValid = await bcrypt.compare(
-      refreshToken,
-      user.hashedRefreshToken,
-    );
+    const isRefreshTokenValid =
+      this.hashToken(refreshToken) === user.hashedRefreshToken;
 
     if (!isRefreshTokenValid) {
       throw new UnauthorizedException('Invalid refresh token');
     }
     const tokens = await this.generateToken(user.id, user.role);
-    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
-    console.log(user.hashedRefreshToken === hashedRefreshToken);
+    const hashedRefreshToken = this.hashToken(tokens.refreshToken);
     await this.userService.saveHashedRefreshToken(user.id, hashedRefreshToken);
     return tokens;
   }
