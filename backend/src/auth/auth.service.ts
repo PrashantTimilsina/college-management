@@ -8,7 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { StringValue } from 'ms';
-import { createHash, randomUUID, timingSafeEqual } from 'crypto';
+import { createHash } from 'crypto';
 @Injectable()
 export class AuthService {
   constructor(
